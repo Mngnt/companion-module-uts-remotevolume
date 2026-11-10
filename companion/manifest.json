@@ -2,11 +2,11 @@
 	"id": "uts-remotevolume",
 	"name": "uts-remotevolume",
 	"shortname": "Remote Volume",
-	"description": "Remote control the volume of Macs, Windows and Linux PCs",
-	"version": "1.1.0",
+	"description": "Remote control the volume of Macs, Windows and Linux PCs, including the volume of single applications on Windows and Linux",
+	"version": "1.2.0",
 	"license": "MIT",
-	"repository": "git+https://github.com/bitfocus/companion-module-uts-remotevolume.git",
-	"bugs": "https://github.com/bitfocus/companion-module-uts-remotevolume/issues",
+	"repository": "git+https://github.com/Mngnt/companion-module-uts-remotevolume.git",
+	"bugs": "https://github.com/Mngnt/companion-module-uts-remotevolume/issues",
 	"maintainers": [
 		{
 			"name": "Leon Reucher",
@@ -22,5 +22,5 @@
 	},
 	"manufacturer": "UTS",
 	"products": ["Remote Volume"],
-	"keywords": ["Volume", "Loudness", "Speaker"]
+	"keywords": ["Volume", "Loudness", "Speaker", "Mixer", "Application", "Mute"]
 }

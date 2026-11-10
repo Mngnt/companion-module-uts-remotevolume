@@ -4,7 +4,7 @@ This module is for controlling the Ultimate Technology Solutions Remote Volume a
 
 For this module to work, a helper application must be installed on all PCs that are to be remote-controlled. This helper application enables communication between the PC and the Companion instance.
 
-You can download the latest release of the helper application, called [Remote Volume](https://github.com/ultimategmbh/remote-volume/releases/latest) from the UTS GitHub releases page. The link will always get you to the latest version.
+You can download the latest release of the helper application, called [Remote Volume](https://github.com/Mngnt/remote-volume/releases/latest) from its GitHub releases page. Per-application volume needs version 1.2.0 or later. The link will always get you to the latest version.
 
 - For Windows: Download and install the .exe file.
 - For OSX: Download the corresponding .dmg file (x64 for Intel processors or ARM for Apple M Processors.), open the .dmg and drag&drop the app into your applications folder.
@@ -16,7 +16,7 @@ In the module configuration, simply enter the IP address of the PC which is runn
 
 ### Per-application volume
 
-Newer versions of the Remote Volume application can also control the volume of single applications, such as Spotify or a browser, the same way as the Windows Volume Mixer. This works on Windows and on Linux (PulseAudio or PipeWire). macOS has no per-application volume, so these actions log an error there. Older versions of the Remote Volume application do not support them.
+Remote Volume 1.2.0 and later can also control the volume of single applications, such as Spotify or a browser, the same way as the Windows Volume Mixer. This works on Windows and on Linux (PulseAudio or PipeWire). macOS has no per-application volume, so these actions log an error there. Older versions do not support them.
 
 An app with several audio streams (e.g. a browser) is controlled as one. An app's volume is its own level in the mixer, relative to the master volume.
 
