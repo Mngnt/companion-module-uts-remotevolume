@@ -23,7 +23,10 @@ export function getFeedbackDefinitions(self) {
 				return self.appRegistry.findLive(app)?.muted === true
 			},
 			subscribe: (feedback) => {
-				self.rememberApp(literalAppOption(feedback.options))
+				self.referenceApp(`feedback:${feedback.id}`, literalAppOption(feedback.options))
+			},
+			unsubscribe: (feedback) => {
+				self.unreferenceApp(`feedback:${feedback.id}`)
 			},
 		},
 		app_running: {
@@ -36,7 +39,10 @@ export function getFeedbackDefinitions(self) {
 				return Boolean(self.appRegistry.findLive(app))
 			},
 			subscribe: (feedback) => {
-				self.rememberApp(literalAppOption(feedback.options))
+				self.referenceApp(`feedback:${feedback.id}`, literalAppOption(feedback.options))
+			},
+			unsubscribe: (feedback) => {
+				self.unreferenceApp(`feedback:${feedback.id}`)
 			},
 		},
 	}

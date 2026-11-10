@@ -135,12 +135,21 @@ export function getActionDefinitions(self) {
 				self.getApps()
 			},
 		},
+		forgetApps: {
+			name: 'App: Forget unused apps',
+			description:
+				"Remove apps that aren't running and aren't used in any action or feedback from the app list, variables and presets",
+			options: [],
+			callback: async () => {
+				self.forgetUnusedApps()
+			},
+		},
 	}
 }
 
 // An app action: the shared app options plus its own, sending the message for the
-// resolved app name. Names used in actions are remembered so their variables exist
-// even while the app isn't running.
+// resolved app name. Names used in actions stay known (with their variables) even
+// while the app isn't running, for as long as an action uses them.
 function appAction(self, { name, description, options, message }) {
 	return {
 		name,
@@ -152,7 +161,10 @@ function appAction(self, { name, description, options, message }) {
 			if (actionName) self.sendAppAction(actionName, app, action.options.volume)
 		},
 		subscribe: (action) => {
-			self.rememberApp(literalAppOption(action.options))
+			self.referenceApp(`action:${action.id}`, literalAppOption(action.options))
+		},
+		unsubscribe: (action) => {
+			self.unreferenceApp(`action:${action.id}`)
 		},
 	}
 }

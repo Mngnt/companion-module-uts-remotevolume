@@ -95,6 +95,20 @@ export function getPresetDefinitions(self) {
 		feedbacks: [],
 	})
 
+	presets.push({
+		category: 'App Volume',
+		name: 'Forget unused apps',
+		type: 'button',
+		style: {
+			text: 'Forget unused apps',
+			size: '14',
+			bgcolor: combineRgb(0, 0, 0),
+			color: combineRgb(255, 255, 255),
+		},
+		steps: [{ down: [{ actionId: 'forgetApps', options: {} }] }],
+		feedbacks: [],
+	})
+
 	// Per-app presets for every known app. Until one is known, an example set for
 	// Spotify is shown; its app option can be changed after placing it.
 	const known = self.appRegistry.entries

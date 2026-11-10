@@ -36,7 +36,7 @@ Remote Volume sends the list of apps when Companion connects, and again whenever
 
 Buttons always send the app's name, never its process id, so they keep working when an app is quit and started again. While it isn't running, Remote Volume replies with an error (shown in the module's log), and the app's variables and feedbacks show it as not running.
 
-Every app seen since the module started, and every app named in an action or feedback, stays in the list with its variables while the module runs. After Companion or the connection restarts, apps used in buttons are added again straight away, and the others as they appear. If Remote Volume is quit or the PC restarts, all apps show as not running until the module reconnects (every 5 seconds while **Reconnect** is enabled in the connection settings), and then Remote Volume sends the list again.
+Every app seen since the module started stays in the list with its variables while the module runs, and so does every app named in an existing action or feedback. Apps typed in an action or feedback are dropped again when no action or feedback names them any more, and names containing variables never get variables of their own. To remove apps that aren't running and aren't used, press a button with **App: Forget unused apps**. After Companion or the connection restarts, apps used in buttons are added again straight away, and the others as they appear. If Remote Volume is quit or the PC restarts, all apps show as not running until the module reconnects (every 5 seconds while **Reconnect** is enabled in the connection settings), and then Remote Volume sends the list again.
 
 **Actions**
 
@@ -44,6 +44,7 @@ Every app seen since the module started, and every app named in an action or fee
 - **App: Increase Volume** / **App: Decrease Volume**: change the app's volume by 1–99. Sends `increaseAppVolume` / `decreaseAppVolume`.
 - **App: Set Mute**: mute, unmute or toggle the app. Sends `muteApp`, `unmuteApp` or `toggleAppMute`.
 - **App: Refresh app list**: ask Remote Volume for the current list of apps. Sends `getApps`.
+- **App: Forget unused apps**: remove apps that aren't running and aren't used in any action or feedback from the list, variables and presets. Nothing is sent to Remote Volume.
 
 **Feedbacks**
 
@@ -57,4 +58,4 @@ Every app seen since the module started, and every app named in an action or fee
 
 **Presets**
 
-The **App Volume** category has a Refresh app list button, and +10%, -10% and Toggle Mute buttons for every known app. Until an app is known, it shows an example set for Spotify. You can change the app of a placed button in its action options.
+The **App Volume** category has Refresh app list and Forget unused apps buttons, and +10%, -10% and Toggle Mute buttons for every known app. Until an app is known, it shows an example set for Spotify. You can change the app of a placed button in its action options.

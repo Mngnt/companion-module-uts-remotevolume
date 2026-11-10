@@ -165,15 +165,31 @@ class HDMIVideoWallProcessor extends InstanceBase {
 		this.refreshApps()
 	}
 
-	// Remembers an app named in an action or feedback, so its variables exist before it
-	// first plays audio. Called from subscribe, which Companion runs for every action and
-	// feedback at startup, so the rebuild is batched.
-	rememberApp(name) {
-		if (!this.appRegistry.remember(name)) return
+	// Tracks the app named in an action or feedback, so its variables exist before it
+	// first plays audio and are removed again once nothing names it. Called from
+	// subscribe/unsubscribe, which Companion runs for every action and feedback at
+	// startup and on every keypress while an option is edited, so the rebuild waits
+	// until the edits settle.
+	referenceApp(id, name) {
+		if (this.appRegistry.reference(id, name)) this.scheduleAppRefresh()
+	}
+
+	unreferenceApp(id) {
+		if (this.appRegistry.unreference(id)) this.scheduleAppRefresh()
+	}
+
+	// Forgets apps that aren't running and aren't used in any action or feedback.
+	forgetUnusedApps() {
+		const count = this.appRegistry.forgetUnused()
+		this.log('info', `Forgot ${count} app${count === 1 ? '' : 's'} that aren't running or used`)
+		if (count) this.refreshApps()
+	}
+
+	scheduleAppRefresh() {
 		clearTimeout(this.appRefreshTimer)
 		this.appRefreshTimer = setTimeout(() => {
 			if (this.isInitialized) this.refreshApps()
-		}, 50)
+		}, 500)
 	}
 
 	// Action, feedback, preset and variable definitions are only rebuilt when an app is

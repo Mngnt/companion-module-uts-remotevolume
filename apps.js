@@ -58,18 +58,28 @@ export function sanitizeApps(list) {
 	return apps
 }
 
-// Every app seen since the module started, or named in an action or feedback, plus the
-// apps that currently have an audio session. Known apps keep their variables, dropdown
-// entry and presets when they quit, so buttons keep working when the app is relaunched
-// (or when Companion starts before the app does).
+// The apps the module knows: every app that had an audio session since the module
+// started ("seen"), plus every app named literally in an existing action or feedback
+// ("referenced"). Known apps keep their variables, dropdown entry and presets when they
+// quit, so buttons keep working when the app is relaunched (or when Companion starts
+// before the app does).
+//
+// References are tracked per action/feedback id, because Companion calls unsubscribe
+// with the old options and subscribe with the new ones on every option edit, i.e. on
+// every keypress in a text field. Only the name an action ends up with stays known.
 export class AppRegistry {
-	known = new Map() // normalized name -> { name, title, variableId }
+	known = new Map() // key (normalized name) -> { key, name, title, variableId }
+	seen = new Set() // keys of apps that had an audio session
+	refs = new Map() // action/feedback id -> key
 	live = []
 
-	// Adds an app by name. Returns true if it was not known before.
-	remember(name, title) {
-		const key = normalizeAppName(name)
-		if (!key || key.includes('$(')) return false
+	// The key of a known app matching a name or title, or the normalized name.
+	#keyFor(name) {
+		return findApp([...this.known.values()], name)?.key ?? normalizeAppName(name)
+	}
+
+	// Adds an app. Returns true if it was not known before.
+	#add(key, name, title) {
 		const existing = this.known.get(key)
 		if (existing) {
 			if (title && existing.title !== title) existing.title = title
@@ -79,14 +89,64 @@ export class AppRegistry {
 		const base = appVariableId(name)
 		let variableId = base
 		for (let i = 2; ids.has(variableId); i++) variableId = `${base}_${i}`
-		this.known.set(key, { name: String(name).trim(), title: title || String(name).trim(), variableId })
+		this.known.set(key, { key, name: String(name).trim(), title: title || String(name).trim(), variableId })
 		return true
+	}
+
+	#isReferenced(key) {
+		for (const ref of this.refs.values()) if (ref === key) return true
+		return false
+	}
+
+	// Drops an app that is neither seen nor referenced. Returns true if it was dropped.
+	#prune(key) {
+		if (this.seen.has(key) || this.#isReferenced(key)) return false
+		return this.known.delete(key)
+	}
+
+	// Records which app an action or feedback names (undefined for none, or for a name
+	// with variables). Returns true if the set of known apps changed.
+	reference(id, name) {
+		const key = name && !name.includes('$(') ? this.#keyFor(name) : undefined
+		const previous = this.refs.get(id)
+		if (previous === key) return false
+		this.refs.delete(id)
+		let changed = previous !== undefined && this.#prune(previous)
+		if (key) {
+			this.refs.set(id, key)
+			changed = this.#add(key, name) || changed
+		}
+		return changed
+	}
+
+	// Records that an action or feedback was removed or is about to change its options.
+	unreference(id) {
+		const previous = this.refs.get(id)
+		if (previous === undefined) return false
+		this.refs.delete(id)
+		return this.#prune(previous)
+	}
+
+	// Forgets the apps that aren't running and aren't named in any action or feedback.
+	// Returns how many were forgotten.
+	forgetUnused() {
+		let count = 0
+		for (const key of [...this.seen]) {
+			if (findApp(this.live, key)) continue
+			this.seen.delete(key)
+			if (this.#prune(key)) count++
+		}
+		return count
 	}
 
 	// Replaces the list of running apps (an empty list while disconnected).
 	setLive(list) {
 		this.live = sanitizeApps(list)
-		for (const app of this.live) this.remember(app.name, app.title)
+		for (const app of this.live) {
+			const key = this.#keyFor(app.name)
+			this.seen.add(key)
+			this.#add(key, app.name, app.title)
+		}
 	}
 
 	// Known apps, each with its live state (running false and no volume when not running).
