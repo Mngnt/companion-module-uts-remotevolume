@@ -13,3 +13,31 @@ You can download the latest release of the helper application, called [Remote Vo
 After the Remote Volume application is installed, make sure that the application is running in the background, to ensure that Companion can connect to the application.
 
 In the module configuration, simply enter the IP address of the PC which is running the Remote Volume software and make sure that the 'port' setting in the module configuration matches the configured port in the Remote Volume application configuration window.
+
+### Per-application volume
+
+Newer versions of the Remote Volume application can also control the volume of single applications, such as Spotify or a browser, the same way as the Windows Volume Mixer. This works on Windows and on Linux (PulseAudio or PipeWire). macOS has no per-application volume, so these actions log an error there. Older versions of the Remote Volume application do not support them.
+
+An app is picked by its process name, case-insensitive and with or without `.exe` (e.g. `spotify`, `chrome`), or by its display title. The **App** option lists the apps that currently have an audio session on the PC; you can also type any name, for example for an app that isn't running yet. An app with several audio streams (e.g. a browser) is controlled as one.
+
+**Actions**
+
+- **App: Set Volume [absolute]**: set the app's volume to 0–100. Sends `{"action":"setAppVolume","app":"spotify","value":50}`.
+- **App: Increase Volume** / **App: Decrease Volume**: change the app's volume by 1–99. Sends `increaseAppVolume` / `decreaseAppVolume`.
+- **App: Set Mute**: mute, unmute or toggle the app. Sends `muteApp`, `unmuteApp` or `toggleAppMute`.
+- **App: Get latest app list**: ask for the app list. You rarely need this: the list is sent on connect and whenever it changes.
+
+An app's volume is its own level in the mixer, relative to the master volume. If no running app matches, the Remote Volume application replies with an error, which is shown in the module's log.
+
+**Feedback**
+
+- **App muted**: true while the selected app is muted. It is false while the app has no audio session.
+
+**Variables**
+
+- `app_names`: the process names of all apps with an audio session, comma separated.
+- `app_<name>_volume` and `app_<name>_muted` for every app in the list. `<name>` is the process name in lower case without `.exe`, with anything other than letters and digits replaced by `_`. For example, `chrome.exe` gives `app_chrome_volume`. The variables are added and removed as apps start and stop playing audio.
+
+**Presets**
+
+The **App Volume** category has +10%, -10% and Toggle Mute buttons for every app in the list. Until the list arrives, it shows an example set for Spotify. You can change the app of a placed button in its action options.
