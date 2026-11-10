@@ -5,13 +5,7 @@ import { variables } from './variables.js'
 import { getFeedbackDefinitions } from './feedbacks.js'
 import { getPresetDefinitions } from './presets.js'
 import WebSocket from 'ws'
-import {
-	appActionMessage,
-	appListKey,
-	appVariableDefinitions,
-	appVariableValues,
-	sanitizeApps,
-} from './apps.js'
+import { AppRegistry, appActionMessage, appVariableDefinitions, appVariableValues } from './apps.js'
 
 class HDMIVideoWallProcessor extends InstanceBase {
 	isInitialized = false
@@ -21,13 +15,9 @@ class HDMIVideoWallProcessor extends InstanceBase {
 	async init(config) {
 		this.config = config
 		this.muted = null
-		this.apps = []
-		this.appListKey = appListKey(this.apps)
-
-		this.setActionDefinitions(getActionDefinitions(this))
-		this.setFeedbackDefinitions(getFeedbackDefinitions(this))
-		this.setPresetDefinitions(getPresetDefinitions(this))
-		this.setVariableDefinitions([...variables, ...appVariableDefinitions(this.apps)])
+		this.appRegistry = new AppRegistry()
+		this.appDefinitionsKey = undefined
+		this.refreshApps()
 
 		this.initWebSocket()
 		this.isInitialized = true
@@ -35,6 +25,7 @@ class HDMIVideoWallProcessor extends InstanceBase {
 
 	async destroy() {
 		this.isInitialized = false
+		clearTimeout(this.appRefreshTimer)
 		if (this.reconnectTimer) {
 			clearInterval(this.reconnectTimer)
 			this.reconnectTimer = null
@@ -80,12 +71,17 @@ class HDMIVideoWallProcessor extends InstanceBase {
 			this.ws.close(1000)
 			delete this.ws
 		}
-		this.ws = new WebSocket(url)
+		const ws = new WebSocket(url)
+		this.ws = ws
 		if (!this.ws) {
 			throw new Error('WebSocket initialization failed')
 		}
 
+		// Events from a socket that has since been replaced (after a config change or a
+		// reconnect) are ignored, so a late close of the old socket can't schedule a
+		// reconnect that drops the new connection.
 		this.ws.addEventListener('open', () => {
+			if (ws !== this.ws) return
 			this.updateStatus(InstanceStatus.Ok)
 
 			if (this.reconnectTimer) {
@@ -94,75 +90,52 @@ class HDMIVideoWallProcessor extends InstanceBase {
 			}
 		})
 
-		this.ws.addEventListener('close', (code) => {
-			this.updateStatus(InstanceStatus.Disconnected, `Connection closed with code ${code}`)
+		this.ws.addEventListener('close', (event) => {
+			if (ws !== this.ws) return
+			this.updateStatus(InstanceStatus.Disconnected, `Connection closed with code ${event?.code ?? event}`)
+			// No apps are known to be running until Remote Volume sends its list again on
+			// reconnect. Known apps keep their variables and buttons.
+			if (this.isInitialized) this.updateApps([])
 			this.maybeReconnect()
 		})
 
-		this.ws.addEventListener('message', this.messageReceivedFromWebSocket.bind(this))
+		this.ws.addEventListener('message', (event) => {
+			if (ws !== this.ws) return
+			this.messageReceivedFromWebSocket(event)
+		})
 
 		this.ws.addEventListener('error', (data) => {
+			if (ws !== this.ws) return
 			this.log('error', data.message)
 		})
 	}
 
 	setVolume(vol) {
-		this.ws.send(
-			JSON.stringify({
-				action: 'setVolume',
-				value: vol,
-			})
-		)
+		this.send({ action: 'setVolume', value: vol })
 	}
 
 	increaseVolume(vol) {
-		this.ws.send(
-			JSON.stringify({
-				action: 'increaseVolume',
-				value: vol,
-			})
-		)
+		this.send({ action: 'increaseVolume', value: vol })
 	}
 
 	decreaseVolume(vol) {
-		this.ws.send(
-			JSON.stringify({
-				action: 'decreaseVolume',
-				value: vol,
-			})
-		)
+		this.send({ action: 'decreaseVolume', value: vol })
 	}
 
 	mute() {
-		this.ws.send(
-			JSON.stringify({
-				action: 'mute',
-			})
-		)
+		this.send({ action: 'mute' })
 	}
 
 	unmute() {
-		this.ws.send(
-			JSON.stringify({
-				action: 'unmute',
-			})
-		)
+		this.send({ action: 'unmute' })
 	}
 
 	toggleMute() {
-		this.ws.send(
-			JSON.stringify({
-				action: 'toggleMute',
-			})
-		)
+		this.send({ action: 'toggleMute' })
 	}
 
 	getState() {
-		this.ws.send(
-			JSON.stringify({
-				action: 'getState',
-			})
-		)
+		this.send({ action: 'getState' })
 	}
 
 	getApps() {
@@ -186,21 +159,37 @@ class HDMIVideoWallProcessor extends InstanceBase {
 		this.ws.send(JSON.stringify(message))
 	}
 
-	// Stores the full app list sent by the Remote Volume app. Action, feedback, preset and
-	// variable definitions are only rebuilt when the set of apps changes, not on every
-	// volume or mute change.
+	// Stores the full app list sent by the Remote Volume app.
 	updateApps(list) {
-		this.apps = sanitizeApps(list)
-		const key = appListKey(this.apps)
-		if (key !== this.appListKey) {
-			this.appListKey = key
+		this.appRegistry.setLive(list)
+		this.refreshApps()
+	}
+
+	// Remembers an app named in an action or feedback, so its variables exist before it
+	// first plays audio. Called from subscribe, which Companion runs for every action and
+	// feedback at startup, so the rebuild is batched.
+	rememberApp(name) {
+		if (!this.appRegistry.remember(name)) return
+		clearTimeout(this.appRefreshTimer)
+		this.appRefreshTimer = setTimeout(() => {
+			if (this.isInitialized) this.refreshApps()
+		}, 50)
+	}
+
+	// Action, feedback, preset and variable definitions are only rebuilt when an app is
+	// added or starts or stops running, not on every volume or mute change.
+	refreshApps() {
+		const entries = this.appRegistry.entries
+		const key = this.appRegistry.definitionsKey()
+		if (key !== this.appDefinitionsKey) {
+			this.appDefinitionsKey = key
 			this.setActionDefinitions(getActionDefinitions(this))
 			this.setFeedbackDefinitions(getFeedbackDefinitions(this))
 			this.setPresetDefinitions(getPresetDefinitions(this))
-			this.setVariableDefinitions([...variables, ...appVariableDefinitions(this.apps)])
+			this.setVariableDefinitions([...variables, ...appVariableDefinitions(entries)])
 		}
-		this.setVariableValues(appVariableValues(this.apps))
-		this.checkFeedbacks('app_muted')
+		this.setVariableValues(appVariableValues(entries))
+		this.checkFeedbacks('app_muted', 'app_running')
 	}
 
 	parseStateObject(data) {

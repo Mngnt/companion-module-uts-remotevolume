@@ -1,7 +1,6 @@
-import { appOption } from './apps.js'
+import { appOptions, literalAppOption, resolveAppOption } from './apps.js'
 
 export function getActionDefinitions(self) {
-	const apps = self.apps ?? []
 	return {
 		set_volume: {
 			name: 'Set Volume [absolute]',
@@ -91,44 +90,28 @@ export function getActionDefinitions(self) {
 				self.getState()
 			},
 		},
-		app_set_volume: {
+		app_set_volume: appAction(self, {
 			name: 'App: Set Volume [absolute]',
 			description: "Set an application's own volume level (Windows and Linux)",
-			options: [
-				appOption(apps),
-				{ type: 'number', id: 'volume', label: 'Volume', default: 50, min: 0, max: 100 },
-			],
-			callback: async (action) => {
-				self.sendAppAction('setAppVolume', action.options.app, action.options.volume)
-			},
-		},
-		app_increase_volume: {
+			options: [{ type: 'number', id: 'volume', label: 'Volume', default: 50, min: 0, max: 100 }],
+			message: () => 'setAppVolume',
+		}),
+		app_increase_volume: appAction(self, {
 			name: 'App: Increase Volume',
 			description: "Increase an application's own volume level (Windows and Linux)",
-			options: [
-				appOption(apps),
-				{ type: 'number', id: 'volume', label: 'Increase by', default: 10, min: 1, max: 99 },
-			],
-			callback: async (action) => {
-				self.sendAppAction('increaseAppVolume', action.options.app, action.options.volume)
-			},
-		},
-		app_decrease_volume: {
+			options: [{ type: 'number', id: 'volume', label: 'Increase by', default: 10, min: 1, max: 99 }],
+			message: () => 'increaseAppVolume',
+		}),
+		app_decrease_volume: appAction(self, {
 			name: 'App: Decrease Volume',
 			description: "Decrease an application's own volume level (Windows and Linux)",
-			options: [
-				appOption(apps),
-				{ type: 'number', id: 'volume', label: 'Decrease by', default: 10, min: 1, max: 99 },
-			],
-			callback: async (action) => {
-				self.sendAppAction('decreaseAppVolume', action.options.app, action.options.volume)
-			},
-		},
-		app_mute: {
+			options: [{ type: 'number', id: 'volume', label: 'Decrease by', default: 10, min: 1, max: 99 }],
+			message: () => 'decreaseAppVolume',
+		}),
+		app_mute: appAction(self, {
 			name: 'App: Set Mute',
 			description: 'Mute, unmute or toggle an application (Windows and Linux)',
 			options: [
-				appOption(apps),
 				{
 					type: 'dropdown',
 					id: 'mute',
@@ -141,18 +124,35 @@ export function getActionDefinitions(self) {
 					],
 				},
 			],
-			callback: async (action) => {
-				const message = { mute: 'muteApp', unmute: 'unmuteApp', toggle: 'toggleAppMute' }[action.options.mute]
-				if (message) self.sendAppAction(message, action.options.app)
-			},
-		},
+			message: (options) => ({ mute: 'muteApp', unmute: 'unmuteApp', toggle: 'toggleAppMute' })[options.mute],
+		}),
 		getApps: {
-			name: 'App: Get latest app list',
-			description: 'Ask for the list of apps with an audio session (it is also sent automatically when it changes)',
+			name: 'App: Refresh app list',
+			description:
+				'Ask Remote Volume for the current list of apps with an audio session, e.g. after starting an app while polling is off',
 			options: [],
 			callback: async () => {
 				self.getApps()
 			},
+		},
+	}
+}
+
+// An app action: the shared app options plus its own, sending the message for the
+// resolved app name. Names used in actions are remembered so their variables exist
+// even while the app isn't running.
+function appAction(self, { name, description, options, message }) {
+	return {
+		name,
+		description,
+		options: [...appOptions(self.appRegistry.entries), ...options],
+		callback: async (action, context) => {
+			const app = await resolveAppOption(action.options, context)
+			const actionName = message(action.options)
+			if (actionName) self.sendAppAction(actionName, app, action.options.volume)
+		},
+		subscribe: (action) => {
+			self.rememberApp(literalAppOption(action.options))
 		},
 	}
 }

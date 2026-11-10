@@ -81,9 +81,24 @@ export function getPresetDefinitions(self) {
 		],
 	})
 
-	// Per-app presets for every app in the last list. Until one arrives, an example
-	// set for Spotify is shown; its app option can be changed after placing it.
-	const apps = self.apps?.length ? self.apps : [{ name: 'spotify', title: 'Spotify', variableId: 'spotify' }]
+	presets.push({
+		category: 'App Volume',
+		name: 'Refresh app list',
+		type: 'button',
+		style: {
+			text: 'Refresh apps',
+			size: '14',
+			bgcolor: combineRgb(0, 0, 0),
+			color: combineRgb(255, 255, 255),
+		},
+		steps: [{ down: [{ actionId: 'getApps', options: {} }] }],
+		feedbacks: [],
+	})
+
+	// Per-app presets for every known app. Until one is known, an example set for
+	// Spotify is shown; its app option can be changed after placing it.
+	const known = self.appRegistry.entries
+	const apps = known.length ? known : [{ name: 'spotify', title: 'Spotify', variableId: 'spotify' }]
 	for (const app of apps) {
 		presets.push(...getAppPresets(self, app))
 	}
@@ -104,7 +119,7 @@ function getAppPresets(self, app) {
 			bgcolor: combineRgb(0, 0, 0),
 			color: combineRgb(255, 255, 255),
 		},
-		steps: [{ down: [{ actionId, options: { app: app.name, ...options } }] }],
+		steps: [{ down: [{ actionId, options: { app: app.name, app_text: '', ...options } }] }],
 		feedbacks,
 	})
 
@@ -114,7 +129,7 @@ function getAppPresets(self, app) {
 		button('Toggle Mute', `${label}\n${volumeVar}`, 'app_mute', { mute: 'toggle' }, [
 			{
 				feedbackId: 'app_muted',
-				options: { app: app.name },
+				options: { app: app.name, app_text: '' },
 				style: {
 					text: `${label}\nMuted`,
 					bgcolor: combineRgb(255, 0, 0),

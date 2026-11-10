@@ -1,7 +1,6 @@
-import { appOption, findApp } from './apps.js'
+import { appOptions, literalAppOption, resolveAppOption } from './apps.js'
 
 export function getFeedbackDefinitions(self) {
-	const apps = self.apps ?? []
 	return {
 		muted: {
 			type: 'boolean',
@@ -16,9 +15,28 @@ export function getFeedbackDefinitions(self) {
 			type: 'boolean',
 			name: 'App muted',
 			description: 'Check if an application is currently muted (false while the app has no audio session)',
-			options: [appOption(apps)],
-			callback: (feedback) => {
-				return findApp(self.apps ?? [], feedback.options.app)?.muted === true
+			options: appOptions(self.appRegistry.entries),
+			// context.parseVariablesInString makes Companion re-check this feedback when a
+			// variable used in the app name changes.
+			callback: async (feedback, context) => {
+				const app = await resolveAppOption(feedback.options, context)
+				return self.appRegistry.findLive(app)?.muted === true
+			},
+			subscribe: (feedback) => {
+				self.rememberApp(literalAppOption(feedback.options))
+			},
+		},
+		app_running: {
+			type: 'boolean',
+			name: 'App has an audio session',
+			description: 'Check if an application is running and has an audio session on the PC',
+			options: appOptions(self.appRegistry.entries),
+			callback: async (feedback, context) => {
+				const app = await resolveAppOption(feedback.options, context)
+				return Boolean(self.appRegistry.findLive(app))
+			},
+			subscribe: (feedback) => {
+				self.rememberApp(literalAppOption(feedback.options))
 			},
 		},
 	}

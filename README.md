@@ -5,7 +5,7 @@ Bitfocus Companion module for the [Remote Volume](https://github.com/ultimategmb
 ## Features
 
 - **Master volume**: set, increase or decrease the volume, and mute, unmute or toggle mute. Includes a "Muted" feedback and the `volume`, `muted` and `output_audio_device_name` variables.
-- **Per-application volume** (Windows and Linux, with a Remote Volume version that supports it): set, increase or decrease the volume of a single app such as Spotify or a browser, and mute, unmute or toggle it. Includes an "App muted" feedback, `app_<name>_volume` / `app_<name>_muted` variables for every app with an audio session, an `app_names` variable, and +10% / -10% / Toggle Mute presets per app. Apps are picked from the list sent by Remote Volume, or by typing a process name (e.g. `spotify`).
+- **Per-application volume** (Windows and Linux, with a Remote Volume version that supports it): set, increase or decrease the volume of a single app such as Spotify or a browser, and mute, unmute or toggle it. Includes "App muted" and "App has an audio session" feedbacks, `app_<name>_volume` / `_muted` / `_running` variables, an `app_names` variable, a Refresh app list preset and +10% / -10% / Toggle Mute presets per app. The app is picked from the list sent by Remote Volume, typed as a process name (e.g. `spotify`), or given as text with variables. Buttons keep working when an app or Remote Volume is quit and relaunched.
 
 See [companion/HELP.md](companion/HELP.md) for setup and the full list of actions, feedbacks and variables, and [LICENSE](LICENSE) for the license.
 
